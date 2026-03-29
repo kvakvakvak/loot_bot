@@ -1,7 +1,7 @@
 import asyncio
 import random
 import sqlite3
-from datetime import datetime, UTC
+from datetime import datetime
 from contextlib import contextmanager
 
 from vkbottle.bot import Bot, Message
@@ -63,7 +63,7 @@ def db_save_walk(peer_id: int, location: str, duration: int):
     with get_db() as conn:
         conn.execute(
             "INSERT OR REPLACE INTO active_walks (peer_id, location, duration, started_at) VALUES (?, ?, ?, ?)",
-            (peer_id, location, duration, datetime.now(UTC).isoformat())
+            (peer_id, location, duration, datetime.utcnow().isoformat())
         )
 
 def db_get_walk(peer_id: int) -> dict | None:
@@ -83,7 +83,7 @@ def db_finish_walk(peer_id: int):
                 """INSERT INTO walk_history (peer_id, location, duration, started_at, finished_at)
                    VALUES (?, ?, ?, ?, ?)""",
                 (row["peer_id"], row["location"], row["duration"],
-                 row["started_at"], datetime.now(UTC).isoformat())
+                 row["started_at"], datetime.utcnow().isoformat())
             )
             conn.execute("DELETE FROM active_walks WHERE peer_id = ?", (peer_id,))
 
@@ -362,7 +362,7 @@ async def restore_timers():
         location = row["location"]
         duration = row["duration"]
         started_at = datetime.fromisoformat(row["started_at"])
-        elapsed_seconds = (datetime.now(UTC) - started_at).total_seconds()
+        elapsed_seconds = (datetime.utcnow() - started_at).total_seconds()
         remaining = duration * 60 - elapsed_seconds
         if remaining <= 0:
             # Время уже вышло — сразу финализируем
@@ -387,7 +387,7 @@ async def _delayed_finish(peer_id: int, location: str, duration: int, remaining_
 # ХЭНДЛЕРЫ
 # ============================================================
 
-@bot.on.message(text="Бродить по округе")
+@bot.on.message(text="бродить по округе")
 async def start_walk(message: Message):
     peer_id = message.peer_id
     if db_is_walking(peer_id):
@@ -428,7 +428,7 @@ async def choose_duration(message: Message):
     pending = getattr(bot, "_pending", {})
     location = pending.pop(peer_id, None)
     if not location:
-        await message.answer("Что-то пошло не так. Напишите \"Бродить по округе\" снова.")
+        await message.answer("Что-то пошло не так. Напишите \"бродить по округе\" снова.")
         await bot.state_dispenser.delete(peer_id)
         return
 
@@ -456,4 +456,9 @@ async def choose_duration(message: Message):
 # ЗАПУСК
 # ============================================================
 
-bot.run_forever()
+async def main():
+    db_init()
+    await restore_timers()
+    await bot.run_polling()
+
+asyncio.run(main())
