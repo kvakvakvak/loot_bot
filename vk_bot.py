@@ -453,12 +453,11 @@ async def choose_duration(message: Message):
     asyncio.create_task(walk_timer(peer_id, duration, location))
 
 # ============================================================
-# ЗАПУСК
-# ============================================================
+# ─── Запуск ───────────────────────────────────────────────────────────────────
 
-async def on_startup():
+async def startup_init():
     db_init()
     await restore_timers()
 
-bot.loop_wrapper.on_startup.append(on_startup)
+bot.loop_wrapper.on_startup.append(startup_init())   # <-- вызов со скобками!
 bot.run_forever()
